@@ -13,7 +13,9 @@ Class {
 		'allScheduledItems',
 		'xOffset',
 		'scrollBar',
-		'totalChartWidth'
+		'totalChartWidth',
+		'filterMode',
+		'filterRow'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -42,13 +44,27 @@ BgGanttPresenter class >> rowHeight [
 { #category : 'private' }
 BgGanttPresenter >> applyFilter [
 	| pattern filtered |
-	pattern := filterField text asString trimBoth.
+	pattern := filterField text asString trimBoth asLowercase.
 	filtered := pattern isEmpty
 		ifTrue: [ allScheduledItems ]
 		ifFalse: [
 			allScheduledItems select: [ :si |
-				si item title ifNil: [ true ] ifNotNil: [ :t |
-					t asLowercase includesSubstring: pattern asLowercase ] ] ].
+				| item |
+				item := si item.
+				filterMode = 'All'
+					ifTrue: [
+						{ item title. item type. item status. item priority.
+						  item estimate ifNotNil: [ :e | e printString ] }
+							anySatisfy: [ :v |
+								v notNil and: [ v asLowercase includesSubstring: pattern ] ] ]
+					ifFalse: [
+						| v |
+						v := filterMode = 'Title'    ifTrue: [ item title ]
+						   ifFalse: [ filterMode = 'Type'     ifTrue: [ item type ]
+						   ifFalse: [ filterMode = 'Status'   ifTrue: [ item status ]
+						   ifFalse: [ filterMode = 'Priority' ifTrue: [ item priority ]
+						   ifFalse: [ item estimate ifNotNil: [ :e | e printString ] ] ] ] ].
+						v notNil and: [ v asLowercase includesSubstring: pattern ] ] ] ].
 	listElement dataAccessor removeAll.
 	listElement dataAccessor addAllLast: filtered
 ]
@@ -78,7 +94,7 @@ BgGanttPresenter >> assembleRoot [
 	space root constraintsDo: [ :c |
 		c horizontal matchParent.
 		c vertical matchParent ].
-	space root addChild: filterField.
+	space root addChild: filterRow.
 	space root addChild: headerElement.
 	space root addChild: contentArea.
 	space root addChild: scrollBar.
@@ -88,12 +104,55 @@ BgGanttPresenter >> assembleRoot [
 
 { #category : 'private - building' }
 BgGanttPresenter >> buildFilterField [
+	| modes buttons activeColor inactiveColor |
+	modes := #('All' 'Title' 'Type' 'Status' 'Priority' 'Est').
+	filterMode := 'All'.
+	activeColor   := BlColorPaint color: (Color blue alpha: 0.25).
+	inactiveColor := BlColorPaint color: (Color gray alpha: 0.12).
+	buttons := OrderedCollection new.
+
+	filterRow := BlElement new.
+	filterRow layout: BlLinearLayout horizontal.
+	filterRow constraintsDo: [ :c |
+		c horizontal matchParent.
+		c vertical exact: 28 ].
+
+	modes do: [ :mode |
+		| btn label |
+		label := BlTextElement new.
+		label text: mode asRopedText.
+		label constraintsDo: [ :c |
+			c frame horizontal alignCenter.
+			c frame vertical alignCenter ].
+		btn := BlElement new.
+		btn layout: BlFrameLayout new.
+		btn background: inactiveColor.
+		btn border: (BlBorder paint: (Color gray alpha: 0.3) width: 1).
+		btn geometry: (BlRoundedRectangleGeometry cornerRadius: 3).
+		btn constraintsDo: [ :c |
+			c horizontal exact: mode size * 8 + 14.
+			c vertical matchParent ].
+		btn margin: (BlInsets right: 3).
+		btn addChild: label.
+		buttons add: btn.
+		btn addEventHandlerOn: BlClickEvent do: [
+			filterMode := mode.
+			buttons do: [ :b | b background: inactiveColor ].
+			btn background: activeColor.
+			self applyFilter ].
+		filterRow addChild: btn ].
+
+	"Mark All as initially active"
+	buttons first background: activeColor.
+
 	filterField := ToTextField new.
 	filterField placeholderText: 'Filter items...'.
 	filterField constraintsDo: [ :c |
 		c horizontal matchParent.
-		c vertical exact: 28 ].
-	filterField addEventHandlerOn: AlbTextEditedEvent do: [ self applyFilter ]
+		c vertical matchParent.
+		c linear weight: 1 ].
+	filterField addEventHandlerOn: AlbTextEditedEvent do: [ self applyFilter ].
+	filterRow addChild: filterField
 ]
 
 { #category : 'private - building' }

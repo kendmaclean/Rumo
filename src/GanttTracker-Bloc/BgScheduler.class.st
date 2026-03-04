@@ -33,10 +33,11 @@ BgScheduler >> priorityValueFor: aBgItem [
 
 { #category : 'scheduling' }
 BgScheduler >> scheduleAll: aCollection [
-	| schedulable blocked result cursor scheduledItems |
+	| schedulable blocked done result cursor scheduledItems |
 	schedulable := aCollection select: [ :item |
 		#(#open #inProgress) includes: item status ].
 	blocked := aCollection select: [ :item | item status = #blocked ].
+	done := aCollection select: [ :item | item status = #done ].
 	result := BgScheduleResult new.
 	scheduledItems := OrderedCollection new.
 	cursor := 0.
@@ -53,10 +54,9 @@ BgScheduler >> scheduleAll: aCollection [
 		scheduledItems add: si.
 		cursor := end ].
 	scheduledItems addAll: (blocked collect: [ :item |
-		| si |
-		si := BgScheduledItem new.
-		si item: item; startDay: 0; endDay: 0.
-		si ]).
+		BgScheduledItem new item: item; startDay: 0; endDay: 0; yourself ]).
+	scheduledItems addAll: (done collect: [ :item |
+		BgScheduledItem new item: item; startDay: 0; endDay: (item estimate ifNil: [ 0 ]); yourself ]).
 	result scheduledItems: scheduledItems.
 	^result
 ]
