@@ -63,9 +63,16 @@ BgScheduler >> scheduleAll: aCollection [
 
 { #category : 'private' }
 BgScheduler >> topologicalSort: schedulableItems [
-	| inDegree queue sorted restricted effectiveMap |
+	| inDegree queue sorted restricted effectiveMap sortBlock |
 	restricted := schedulableItems asIdentitySet.
 	effectiveMap := self effectivePriorityMap: schedulableItems.
+	sortBlock := [ :a :b |
+		| pa pb |
+		pa := effectiveMap at: a.
+		pb := effectiveMap at: b.
+		pa = pb
+			ifTrue: [ (a estimate ifNil: [ 0 ]) <= (b estimate ifNil: [ 0 ]) ]
+			ifFalse: [ pa <= pb ] ].
 	inDegree := IdentityDictionary new.
 	schedulableItems do: [ :item | inDegree at: item put: 0 ].
 	schedulableItems do: [ :item |
@@ -73,8 +80,7 @@ BgScheduler >> topologicalSort: schedulableItems [
 			(restricted includes: dep) ifTrue: [
 				inDegree at: item put: (inDegree at: item) + 1 ] ] ].
 	queue := (schedulableItems select: [ :item | (inDegree at: item) = 0 ])
-		asSortedCollection: [ :a :b |
-			(effectiveMap at: a) <= (effectiveMap at: b) ].
+		asSortedCollection: sortBlock.
 	sorted := OrderedCollection new.
 	[ queue isEmpty ] whileFalse: [
 		| node |
@@ -85,7 +91,6 @@ BgScheduler >> topologicalSort: schedulableItems [
 				inDegree at: item put: (inDegree at: item) - 1.
 				(inDegree at: item) = 0 ifTrue: [
 					queue add: item.
-					queue := queue asSortedCollection: [ :a :b |
-						(effectiveMap at: a) <= (effectiveMap at: b) ] ] ] ] ].
+					queue := queue asSortedCollection: sortBlock ] ] ] ].
 	^ sorted
 ]
