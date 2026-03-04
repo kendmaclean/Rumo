@@ -11,7 +11,7 @@ Class {
 
 { #category : 'building' }
 BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
-	| spacer totalDays todayLine |
+	| spacer sepEl totalDays todayLine |
 	scheduleResult := aBgScheduleResult.
 	self removeChildren.
 	spacer := BlElement new.
@@ -19,6 +19,12 @@ BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
 		c horizontal exact: BgGanttPresenter labelWidth.
 		c vertical matchParent ].
 	self addChild: spacer.
+	sepEl := BlElement new.
+	sepEl background: (BlColorPaint color: (Color gray alpha: 0.35)).
+	sepEl constraintsDo: [ :c |
+		c horizontal exact: 1.
+		c vertical matchParent ].
+	self addChild: sepEl.
 	totalDays := (aBgScheduleResult scheduledItems
 		inject: 0
 		into: [ :max :si | max max: si endDay ]) ceiling + 14.

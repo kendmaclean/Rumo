@@ -106,11 +106,12 @@ BgGanttPresenter >> buildList [
 	listElement := ToListElement new.
 	listElement matchParent.
 	listElement nodeBuilder: [ :node :si :holder |
-		| item icon titleText estimateText idx labelEl barEl |
+		| item icon titleText estimateText idx labelEl sepEl barEl |
 		item := si item.
 		idx := listElement dataAccessor indexOf: si ifAbsent: [ 0 ].
 		icon := item isTask ifTrue: [ 'T' ] ifFalse: [ 'B' ].
 		titleText := item title ifNil: [ 'untitled' ].
+		titleText size > 30 ifTrue: [ titleText := (titleText copyFrom: 1 to: 27) , '...' ].
 		estimateText := item estimate
 			ifNil: [ '?' ]
 			ifNotNil: [ :e | e printString , 'd' ].
@@ -123,6 +124,11 @@ BgGanttPresenter >> buildList [
 			c linear vertical alignCenter ].
 		item status = #blocked
 			ifTrue: [ labelEl text foreground: Color gray ].
+		sepEl := BlElement new.
+		sepEl background: (BlColorPaint color: (Color gray alpha: 0.35)).
+		sepEl constraintsDo: [ :c |
+			c horizontal exact: 1.
+			c vertical exact: BgGanttPresenter rowHeight ].
 		barEl := BgGanttBarElement new.
 		barEl setXOffset: xOffset.
 		barEl scheduledItem: si.
@@ -134,6 +140,7 @@ BgGanttPresenter >> buildList [
 		node removeChildren.
 		node layout: BlLinearLayout horizontal.
 		node addChild: labelEl.
+		node addChild: sepEl.
 		node addChild: barEl ].
 	listElement addEventHandlerOn: ToListPrimarySelectionChangedEvent
 		do: [ :evt |
