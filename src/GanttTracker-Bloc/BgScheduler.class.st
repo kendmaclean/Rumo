@@ -6,6 +6,27 @@ Class {
 }
 
 { #category : 'private' }
+BgScheduler >> effectivePriorityMap: items [
+	"Each item's effective priority = its own priority promoted by
+	 the highest-priority item that (transitively) depends on it."
+	| map changed |
+	map := IdentityDictionary new.
+	items do: [ :item | map at: item put: (self priorityValueFor: item) ].
+	[ changed := false.
+	  items do: [ :item |
+	      item dependencies do: [ :dep |
+	          (map includesKey: dep) ifTrue: [
+	              | cur new |
+	              cur := map at: dep.
+	              new := cur min: (map at: item).
+	              new < cur ifTrue: [
+	                  map at: dep put: new.
+	                  changed := true ] ] ] ].
+	  changed ] whileTrue.
+	^ map
+]
+
+{ #category : 'private' }
 BgScheduler >> priorityValueFor: aBgItem [
 	^#(#critical #high #medium #low) indexOf: aBgItem priority ifAbsent: [ 5 ]
 ]
@@ -42,8 +63,9 @@ BgScheduler >> scheduleAll: aCollection [
 
 { #category : 'private' }
 BgScheduler >> topologicalSort: schedulableItems [
-	| inDegree queue sorted restricted |
+	| inDegree queue sorted restricted effectiveMap |
 	restricted := schedulableItems asIdentitySet.
+	effectiveMap := self effectivePriorityMap: schedulableItems.
 	inDegree := IdentityDictionary new.
 	schedulableItems do: [ :item | inDegree at: item put: 0 ].
 	schedulableItems do: [ :item |
@@ -52,7 +74,7 @@ BgScheduler >> topologicalSort: schedulableItems [
 				inDegree at: item put: (inDegree at: item) + 1 ] ] ].
 	queue := (schedulableItems select: [ :item | (inDegree at: item) = 0 ])
 		asSortedCollection: [ :a :b |
-			(self priorityValueFor: a) <= (self priorityValueFor: b) ].
+			(effectiveMap at: a) <= (effectiveMap at: b) ].
 	sorted := OrderedCollection new.
 	[ queue isEmpty ] whileFalse: [
 		| node |
@@ -64,6 +86,6 @@ BgScheduler >> topologicalSort: schedulableItems [
 				(inDegree at: item) = 0 ifTrue: [
 					queue add: item.
 					queue := queue asSortedCollection: [ :a :b |
-						(self priorityValueFor: a) <= (self priorityValueFor: b) ] ] ] ] ].
-	^sorted
+						(effectiveMap at: a) <= (effectiveMap at: b) ] ] ] ] ].
+	^ sorted
 ]
