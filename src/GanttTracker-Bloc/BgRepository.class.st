@@ -3,7 +3,8 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'items',
-		'customPath'
+		'customPath',
+		'undoStack'
 	],
 	#classVars : [
 		'UniqueInstance'
@@ -27,8 +28,14 @@ BgRepository class >> uniqueInstance [
 
 { #category : 'mutations' }
 BgRepository >> addItem: aBgItem [
+	self pushUndoSnapshot.
 	items add: aBgItem.
 	self save
+]
+
+{ #category : 'accessing' }
+BgRepository >> canUndo [
+	^ undoStack notEmpty
 ]
 
 { #category : 'accessing' }
@@ -44,7 +51,8 @@ BgRepository >> defaultPath [
 
 { #category : 'initialization' }
 BgRepository >> initialize [
-	items := OrderedCollection new
+	items := OrderedCollection new.
+	undoStack := OrderedCollection new
 ]
 
 { #category : 'accessing' }
@@ -63,8 +71,15 @@ BgRepository >> load [
 		ifFalse: [ OrderedCollection new ]
 ]
 
+{ #category : 'private' }
+BgRepository >> pushUndoSnapshot [
+	undoStack addLast: items deepCopy.
+	undoStack size > 5 ifTrue: [ undoStack removeFirst ]
+]
+
 { #category : 'mutations' }
 BgRepository >> removeItem: aBgItem [
+	self pushUndoSnapshot.
 	items remove: aBgItem ifAbsent: [].
 	self save
 ]
@@ -76,6 +91,18 @@ BgRepository >> save [
 	path parent ensureCreateDirectory.
 	path writeStreamDo: [ :stream |
 		STON put: items onStream: stream ]
+]
+
+{ #category : 'mutations' }
+BgRepository >> snapshotForUndo [
+	self pushUndoSnapshot
+]
+
+{ #category : 'persistence' }
+BgRepository >> undo [
+	undoStack isEmpty ifTrue: [ ^ self ].
+	items := undoStack removeLast.
+	self save
 ]
 
 { #category : 'mutations' }

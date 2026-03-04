@@ -11,7 +11,9 @@ Class {
 		'onDelete',
 		'onAddDependency',
 		'currentButton',
-		'onShowCurrent'
+		'onShowCurrent',
+		'undoButton',
+		'onUndo'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -26,6 +28,7 @@ BgToolbarPresenter >> defaultLayout [
 		add: deleteButton expand: false;
 		add: addDependencyButton expand: false;
 		add: currentButton expand: false;
+		add: undoButton expand: false;
 		yourself
 ]
 
@@ -52,6 +55,11 @@ BgToolbarPresenter >> initializePresenters [
 	currentButton := self newButton
 		label: 'Current';
 		action: [ onShowCurrent ifNotNil: [ :cb | cb value ] ];
+		yourself.
+	undoButton := self newButton
+		label: 'Undo';
+		action: [ onUndo ifNotNil: [ :cb | cb value ] ];
+		enabled: false;
 		yourself
 ]
 
@@ -80,8 +88,18 @@ BgToolbarPresenter >> onShowCurrent: aBlock [
 	onShowCurrent := aBlock
 ]
 
+{ #category : 'callbacks' }
+BgToolbarPresenter >> onUndo: aBlock [
+	onUndo := aBlock
+]
+
 { #category : 'updating' }
 BgToolbarPresenter >> selectionChanged: hasSelection [
 	deleteButton enabled: hasSelection.
 	addDependencyButton enabled: hasSelection
+]
+
+{ #category : 'updating' }
+BgToolbarPresenter >> updateUndoButton: canUndo [
+	undoButton enabled: canUndo
 ]

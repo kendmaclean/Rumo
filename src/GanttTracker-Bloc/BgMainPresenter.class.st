@@ -89,11 +89,12 @@ BgMainPresenter >> onItemSelected: aBgItem [
 	toolbar selectionChanged: true
 ]
 
-{ #category : 'actions' }
+{ #category : 'private' }
 BgMainPresenter >> refresh [
 	| result |
 	result := BgScheduler new scheduleAll: BgRepository uniqueInstance items.
-	ganttPresenter loadScheduleResult: result
+	ganttPresenter loadScheduleResult: result.
+	toolbar updateUndoButton: BgRepository uniqueInstance canUndo
 ]
 
 { #category : 'actions' }
@@ -138,6 +139,9 @@ BgMainPresenter >> wireCallbacks [
 	toolbar onDelete: [ self deleteSelectedItem ].
 	toolbar onAddDependency: [ self addDependency ].
 	toolbar onShowCurrent: [ ganttPresenter toggleHideDone ].
+	toolbar onUndo: [
+		BgRepository uniqueInstance undo.
+		self refresh ].
 	ganttPresenter onSelectionChanged: [ :item | self onItemSelected: item ].
 	ganttPresenter onContextMenu: [ :item | self showContextMenuFor: item ].
 	detailsPresenter onSave: [ self refresh ]

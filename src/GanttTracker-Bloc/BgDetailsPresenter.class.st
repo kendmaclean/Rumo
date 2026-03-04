@@ -104,6 +104,7 @@ BgDetailsPresenter >> onSave: aBlock [
 { #category : 'actions' }
 BgDetailsPresenter >> saveAction [
 	currentItem ifNil: [ ^self ].
+	BgRepository uniqueInstance snapshotForUndo.
 	currentItem title: titleField text trim.
 	currentItem type: typeDropdown selectedItem.
 	currentItem status: statusDropdown selectedItem.
