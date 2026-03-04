@@ -11,7 +11,7 @@ Class {
 
 { #category : 'building' }
 BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
-	| spacer sepEl totalDays todayLine |
+	| spacer sepEl clipWrapper totalDays totalWidth todayLine |
 	scheduleResult := aBgScheduleResult.
 	self removeChildren.
 	spacer := BlElement new.
@@ -28,9 +28,18 @@ BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
 	totalDays := (aBgScheduleResult scheduledItems
 		inject: 0
 		into: [ :max :si | max max: si endDay ]) ceiling + 14.
+	totalWidth := totalDays * BgGanttPresenter dayWidth.
+	clipWrapper := BlElement new.
+	clipWrapper clipChildren: true.
+	clipWrapper layout: BlBasicLayout new.
+	clipWrapper constraintsDo: [ :c |
+		c horizontal matchParent.
+		c vertical matchParent ].
 	dayStrip := BlElement new.
 	dayStrip layout: BlBasicLayout new.
-	dayStrip constraintsDo: [ :c | c horizontal matchParent. c vertical matchParent ].
+	dayStrip constraintsDo: [ :c |
+		c horizontal exact: totalWidth.
+		c vertical matchParent ].
 	todayLine := BlElement new.
 	todayLine background: (BlColorPaint color: (Color red alpha: 0.4)).
 	todayLine position: 0 @ 0.
@@ -42,7 +51,8 @@ BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
 		lbl text: day printString asRopedText.
 		lbl position: (day * BgGanttPresenter dayWidth) @ 0.
 		dayStrip addChild: lbl ].
-	self addChild: dayStrip
+	clipWrapper addChild: dayStrip.
+	self addChild: clipWrapper
 ]
 
 { #category : 'initialization' }

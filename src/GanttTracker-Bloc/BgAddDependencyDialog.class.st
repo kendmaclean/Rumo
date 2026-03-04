@@ -19,8 +19,10 @@ BgAddDependencyDialog >> defaultLayout [
 
 { #category : 'accessing' }
 BgAddDependencyDialog >> eligibleDepsFor: aBgItem [
-	^BgRepository uniqueInstance items select: [ :item |
-		validator canAdd: item to: aBgItem ]
+	| eligible |
+	eligible := BgRepository uniqueInstance items select: [ :item |
+		item status ~= #done and: [ validator canAdd: item to: aBgItem ] ].
+	^ eligible asSortedCollection: [ :a :b | a title asLowercase <= b title asLowercase ]
 ]
 
 { #category : 'initialization' }
