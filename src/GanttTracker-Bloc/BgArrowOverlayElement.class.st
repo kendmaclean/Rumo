@@ -12,7 +12,7 @@ Class {
 
 { #category : 'private' }
 BgArrowOverlayElement >> buildArrows [
-	| itemToSi rowIndexOf rh dw lw color hOff sOff |
+	| itemToSi rowIndexOf rh dw lw color hOff sOff barHalf exitOffset |
 	self removeChildren.
 	scheduleResult ifNil: [ ^self ].
 	rh := BgGanttPresenter rowHeight.
@@ -20,6 +20,8 @@ BgArrowOverlayElement >> buildArrows [
 	lw := BgGanttPresenter labelWidth.
 	hOff := horizontalOffset ifNil: [ 0 ].
 	sOff := scrollOffset ifNil: [ 0 ].
+	barHalf := 11. "half the bar height (22px bar)"
+	exitOffset := 6. "px left of bar right edge"
 	color := Color blue alpha: 0.55.
 	itemToSi := IdentityDictionary new.
 	rowIndexOf := IdentityDictionary new.
@@ -36,21 +38,24 @@ BgArrowOverlayElement >> buildArrows [
 				| depSi |
 				depSi := itemToSi at: dep ifAbsent: [ nil ].
 				(depSi notNil and: [ depSi endDay notNil ]) ifTrue: [
-					| depRow fromX fromY midX minY segH segStartX segW cFromX cToX |
+					| depRow fromX fromY exitX exitY cToX segTop segH hStart |
 					depRow := rowIndexOf at: depSi.
 					fromX := lw + (depSi endDay * dw) - hOff.
 					fromY := (depRow * rh) + (rh // 2) - sOff.
 					(fromX < lw and: [ toX < lw ]) ifFalse: [
-						cFromX := fromX max: lw.
+						exitX := (fromX - exitOffset) max: lw.
+						exitY := toY >= fromY
+							ifTrue: [ fromY + barHalf ]
+							ifFalse: [ fromY - barHalf ].
 						cToX := toX max: lw.
-						midX := cFromX + 8.
-						self addChild: (self makeSegmentX: cFromX y: fromY width: 8 height: 2 color: color).
-						minY := fromY min: toY.
-						segH := (fromY - toY) abs max: 1.
-						self addChild: (self makeSegmentX: midX y: minY width: 2 height: segH color: color).
-						segStartX := midX min: cToX.
-						segW := (cToX - midX) abs max: 1.
-						self addChild: (self makeSegmentX: segStartX y: toY width: segW height: 2 color: color) ] ] ] ] ]
+						segTop := exitY min: toY.
+						segH := (toY - exitY) abs max: 1.
+						self addChild: (self makeSegmentX: exitX y: segTop width: 2 height: segH color: color).
+						hStart := exitX min: cToX.
+						(cToX - hStart) > 0 ifTrue: [
+							self addChild: (self makeSegmentX: hStart y: toY width: cToX - hStart height: 2 color: color) ].
+						cToX >= lw ifTrue: [
+							self addChild: (self makeArrowheadAt: cToX y: toY color: color) ] ] ] ] ] ]
 ]
 
 { #category : 'geometry testing' }
@@ -74,6 +79,20 @@ BgArrowOverlayElement >> initialize [
 	self constraintsDo: [ :c |
 		c horizontal matchParent.
 		c vertical matchParent ]
+]
+
+{ #category : 'private' }
+BgArrowOverlayElement >> makeArrowheadAt: x y: y color: aColor [
+	| size tip |
+	size := 7.
+	tip := BlElement new.
+	tip geometry: BlTriangleGeometry new beRight.
+	tip background: aColor.
+	tip constraintsDo: [ :c |
+		c horizontal exact: size.
+		c vertical exact: size ].
+	tip position: x @ (y - (size // 2) + 1).
+	^ tip
 ]
 
 { #category : 'private' }
