@@ -15,7 +15,8 @@ Class {
 		'scrollBar',
 		'totalChartWidth',
 		'filterMode',
-		'filterRow'
+		'filterRow',
+		'hideDone'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -65,6 +66,8 @@ BgGanttPresenter >> applyFilter [
 						   ifFalse: [ filterMode = 'Priority' ifTrue: [ item priority ]
 						   ifFalse: [ item estimate ifNotNil: [ :e | e printString ] ] ] ] ].
 						v notNil and: [ v asLowercase includesSubstring: pattern ] ] ] ].
+	hideDone ifTrue: [
+		filtered := filtered reject: [ :si | si item status = #done ] ].
 	listElement dataAccessor removeAll.
 	listElement dataAccessor addAllLast: filtered
 ]
@@ -238,6 +241,7 @@ BgGanttPresenter >> highlightItem: aBgItem [
 BgGanttPresenter >> initializePresenters [
 	xOffset := 0.
 	totalChartWidth := 0.
+	hideDone := false.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
@@ -272,6 +276,12 @@ BgGanttPresenter >> onContextMenu: aBlock [
 { #category : 'accessing' }
 BgGanttPresenter >> onSelectionChanged: aBlock [
 	onSelectionChanged := aBlock
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> toggleHideDone [
+	hideDone := hideDone not.
+	self applyFilter
 ]
 
 { #category : 'private' }

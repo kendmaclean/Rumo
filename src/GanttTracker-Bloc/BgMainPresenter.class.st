@@ -137,6 +137,7 @@ BgMainPresenter >> wireCallbacks [
 	toolbar onAddBug: [ self addItemOfType: #bug ].
 	toolbar onDelete: [ self deleteSelectedItem ].
 	toolbar onAddDependency: [ self addDependency ].
+	toolbar onShowCurrent: [ ganttPresenter toggleHideDone ].
 	ganttPresenter onSelectionChanged: [ :item | self onItemSelected: item ].
 	ganttPresenter onContextMenu: [ :item | self showContextMenuFor: item ].
 	detailsPresenter onSave: [ self refresh ]
