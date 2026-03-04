@@ -56,12 +56,14 @@ BgGanttBarElement >> onSelectionChanged: aBlock [
 
 { #category : 'private' }
 BgGanttBarElement >> positionBar [
-	| item startX endX width visStart visWidth |
+	| item startX endX width minWidth visStart visWidth |
 	item := scheduledItem item.
 	startX := scheduledItem startDay * BgGanttPresenter dayWidth.
 	endX := scheduledItem endDay * BgGanttPresenter dayWidth.
 	width := endX - startX.
-	width = 0 ifTrue: [ ^ self showDiamondMarker ].
+	item status = #blocked ifTrue: [ ^ self showDiamondMarker ].
+	minWidth := BgGanttPresenter dayWidth / 4.
+	width := width max: minWidth.
 	visStart := startX - xOffset.
 	visWidth := width.
 	visStart < 0 ifTrue: [
