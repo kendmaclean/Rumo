@@ -2,7 +2,8 @@ Class {
 	#name : 'BgTimelineHeaderElement',
 	#superclass : 'BlElement',
 	#instVars : [
-		'scheduleResult'
+		'scheduleResult',
+		'dayStrip'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -10,7 +11,7 @@ Class {
 
 { #category : 'building' }
 BgTimelineHeaderElement >> buildFor: aBgScheduleResult [
-	| spacer dayStrip totalDays todayLine |
+	| spacer totalDays todayLine |
 	scheduleResult := aBgScheduleResult.
 	self removeChildren.
 	spacer := BlElement new.
@@ -46,4 +47,10 @@ BgTimelineHeaderElement >> initialize [
 		c vertical exact: BgGanttPresenter headerHeight.
 		c horizontal matchParent ].
 	self background: (BlColorPaint color: (Color gray alpha: 0.07))
+]
+
+{ #category : 'api' }
+BgTimelineHeaderElement >> xOffset: aNumber [
+	dayStrip ifNil: [ ^ self ].
+	dayStrip transformDo: [ :t | t translateBy: aNumber negated @ 0 ]
 ]

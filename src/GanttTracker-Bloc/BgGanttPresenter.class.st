@@ -10,7 +10,10 @@ Class {
 		'onSelectionChanged',
 		'onContextMenu',
 		'selectedItem',
-		'allScheduledItems'
+		'allScheduledItems',
+		'xOffset',
+		'scrollBar',
+		'totalChartWidth'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -50,6 +53,14 @@ BgGanttPresenter >> applyFilter [
 	listElement dataAccessor addAllLast: filtered
 ]
 
+{ #category : 'private' }
+BgGanttPresenter >> applyHorizontalOffset: px [
+	xOffset := px.
+	headerElement xOffset: px.
+	arrowOverlay horizontalOffset: px.
+	self updateBarXOffset: px in: listElement
+]
+
 { #category : 'private - building' }
 BgGanttPresenter >> assembleRoot [
 	| contentArea |
@@ -69,7 +80,10 @@ BgGanttPresenter >> assembleRoot [
 		c vertical matchParent ].
 	space root addChild: filterField.
 	space root addChild: headerElement.
-	space root addChild: contentArea
+	space root addChild: contentArea.
+	space root addChild: scrollBar.
+	scrollBar addEventHandlerOn: BlElementLayoutComputedEvent
+		do: [ self updateScrollBar ]
 ]
 
 { #category : 'private - building' }
@@ -110,6 +124,7 @@ BgGanttPresenter >> buildList [
 		item status = #blocked
 			ifTrue: [ labelEl text foreground: Color gray ].
 		barEl := BgGanttBarElement new.
+		barEl setXOffset: xOffset.
 		barEl scheduledItem: si.
 		barEl onSelectionChanged: onSelectionChanged.
 		barEl onContextMenu: onContextMenu.
@@ -136,6 +151,12 @@ BgGanttPresenter >> buildOverlay [
 	arrowOverlay := BgArrowOverlayElement new
 ]
 
+{ #category : 'private - building' }
+BgGanttPresenter >> buildScrollBar [
+	scrollBar := BgHorizontalScrollBar new.
+	scrollBar onScrolled: [ :px | self applyHorizontalOffset: px ]
+]
+
 { #category : 'api' }
 BgGanttPresenter >> highlightItem: aBgItem [
 
@@ -149,23 +170,32 @@ BgGanttPresenter >> highlightItem: aBgItem [
 
 { #category : 'initialization' }
 BgGanttPresenter >> initializePresenters [
+	xOffset := 0.
+	totalChartWidth := 0.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
 	self buildFilterField.
 	self buildHeader.
 	self buildOverlay.
+	self buildScrollBar.
 	self assembleRoot
 ]
 
 { #category : 'api' }
 BgGanttPresenter >> loadScheduleResult: aBgScheduleResult [
+	| totalDays |
 	scheduleResult := aBgScheduleResult.
 	allScheduledItems := aBgScheduleResult scheduledItems.
+	totalDays := (allScheduledItems
+		inject: 0
+		into: [ :max :si | max max: si endDay ]) ceiling + 14.
+	totalChartWidth := totalDays * BgGanttPresenter dayWidth.
 	headerElement buildFor: aBgScheduleResult.
 	listElement selecter deselectAll.
 	self applyFilter.
-	arrowOverlay scheduleResult: aBgScheduleResult
+	arrowOverlay scheduleResult: aBgScheduleResult.
+	self updateScrollBar
 ]
 
 { #category : 'accessing' }
@@ -176,4 +206,19 @@ BgGanttPresenter >> onContextMenu: aBlock [
 { #category : 'accessing' }
 BgGanttPresenter >> onSelectionChanged: aBlock [
 	onSelectionChanged := aBlock
+]
+
+{ #category : 'private' }
+BgGanttPresenter >> updateBarXOffset: px in: anElement [
+	(anElement isKindOf: BgGanttBarElement)
+		ifTrue: [ anElement xOffset: px ]
+		ifFalse: [ anElement childrenDo: [ :c | self updateBarXOffset: px in: c ] ]
+]
+
+{ #category : 'private' }
+BgGanttPresenter >> updateScrollBar [
+	totalChartWidth = 0 ifTrue: [ ^ self ].
+	scrollBar
+		updateFor: ((space root extent x - BgGanttPresenter labelWidth) max: 1)
+		totalWidth: totalChartWidth
 ]

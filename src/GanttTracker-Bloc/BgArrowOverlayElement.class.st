@@ -3,7 +3,8 @@ Class {
 	#superclass : 'BlElement',
 	#instVars : [
 		'scheduleResult',
-		'scrollOffset'
+		'scrollOffset',
+		'horizontalOffset'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -26,23 +27,27 @@ BgArrowOverlayElement >> buildArrows [
 	scheduleResult scheduledItems do: [ :si |
 		| siRow toX toY |
 		siRow := rowIndexOf at: si.
-		toX := lw + (si startDay * dw).
+		toX := lw + (si startDay * dw) - horizontalOffset.
 		toY := (siRow * rh) + (rh // 2) - scrollOffset.
 		si item dependencies do: [ :dep |
-			| depSi depRow fromX fromY midX minY segH segStartX segW |
+			| depSi depRow fromX fromY midX minY segH segStartX segW cFromX cToX |
 			depSi := itemToSi at: dep ifAbsent: [ nil ].
 			depSi ifNotNil: [
 				depRow := rowIndexOf at: depSi.
-				fromX := lw + (depSi endDay * dw).
+				fromX := lw + (depSi endDay * dw) - horizontalOffset.
 				fromY := (depRow * rh) + (rh // 2) - scrollOffset.
-				midX := fromX + 8.
-				self addChild: (self makeSegmentX: fromX y: fromY width: 8 height: 2 color: color).
-				minY := fromY min: toY.
-				segH := (fromY - toY) abs max: 1.
-				self addChild: (self makeSegmentX: midX y: minY width: 2 height: segH color: color).
-				segStartX := midX min: toX.
-				segW := (toX - midX) abs max: 1.
-				self addChild: (self makeSegmentX: segStartX y: toY width: segW height: 2 color: color) ] ] ]
+				"Skip if both endpoints are scrolled into the label column"
+				(fromX < lw and: [ toX < lw ]) ifFalse: [
+					cFromX := fromX max: lw.
+					cToX := toX max: lw.
+					midX := cFromX + 8.
+					self addChild: (self makeSegmentX: cFromX y: fromY width: 8 height: 2 color: color).
+					minY := fromY min: toY.
+					segH := (fromY - toY) abs max: 1.
+					self addChild: (self makeSegmentX: midX y: minY width: 2 height: segH color: color).
+					segStartX := midX min: cToX.
+					segW := (cToX - midX) abs max: 1.
+					self addChild: (self makeSegmentX: segStartX y: toY width: segW height: 2 color: color) ] ] ] ]
 ]
 
 { #category : 'geometry testing' }
@@ -51,10 +56,17 @@ BgArrowOverlayElement >> containsPoint: aPoint [
 	^false
 ]
 
+{ #category : 'accessing' }
+BgArrowOverlayElement >> horizontalOffset: aNumber [
+	horizontalOffset := aNumber.
+	self buildArrows
+]
+
 { #category : 'initialization' }
 BgArrowOverlayElement >> initialize [
 	super initialize.
 	scrollOffset := 0.
+	horizontalOffset := 0.
 	self layout: BlBasicLayout new.
 	self constraintsDo: [ :c |
 		c horizontal matchParent.

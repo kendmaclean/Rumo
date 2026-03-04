@@ -5,7 +5,8 @@ Class {
 		'scheduledItem',
 		'barRect',
 		'onSelectionChanged',
-		'onContextMenu'
+		'onContextMenu',
+		'xOffset'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -24,6 +25,7 @@ BgGanttBarElement >> colorForStatus: aSymbol [
 { #category : 'initialization' }
 BgGanttBarElement >> initialize [
 	super initialize.
+	xOffset := 0.
 	self layout: BlFrameLayout new.
 	self constraintsDo: [ :c |
 		c horizontal matchParent.
@@ -54,18 +56,24 @@ BgGanttBarElement >> onSelectionChanged: aBlock [
 
 { #category : 'private' }
 BgGanttBarElement >> positionBar [
-	| item startX width |
+	| item startX endX width visStart visWidth |
 	item := scheduledItem item.
 	startX := scheduledItem startDay * BgGanttPresenter dayWidth.
-	width := (scheduledItem endDay - scheduledItem startDay) * BgGanttPresenter dayWidth.
+	endX := scheduledItem endDay * BgGanttPresenter dayWidth.
+	width := endX - startX.
 	width = 0 ifTrue: [ ^ self showDiamondMarker ].
-	self padding: (BlInsets left: startX).
+	visStart := startX - xOffset.
+	visWidth := width.
+	visStart < 0 ifTrue: [
+		visWidth := (endX - xOffset) max: 0.
+		visStart := 0 ].
+	self padding: (BlInsets left: visStart).
 	barRect geometry: BlRectangleGeometry new.
 	barRect background: (BlColorPaint color: (self colorForStatus: item status)).
 	barRect constraintsDo: [ :c |
 		c frame horizontal alignLeft.
 		c frame vertical alignCenter.
-		c horizontal exact: width.
+		c horizontal exact: visWidth.
 		c vertical exact: 22 ]
 ]
 
@@ -75,13 +83,18 @@ BgGanttBarElement >> scheduledItem: aBgScheduledItem [
 	self positionBar
 ]
 
+{ #category : 'accessing' }
+BgGanttBarElement >> setXOffset: aNumber [
+	xOffset := aNumber
+]
+
 { #category : 'private' }
 BgGanttBarElement >> showDiamondMarker [
 	| startX diamondSize yPad leftPad |
 	startX := scheduledItem startDay * BgGanttPresenter dayWidth.
 	diamondSize := 12.
 	yPad := (BgGanttPresenter rowHeight - diamondSize) / 2.
-	leftPad := (startX - 6) max: 0.
+	leftPad := (startX - xOffset - 6) max: 0.
 	self padding: (BlInsets top: yPad left: leftPad bottom: yPad right: 0).
 	barRect geometry: (BlPolygonGeometry vertices: { 6@0. 12@6. 6@12. 0@6 }).
 	barRect constraintsDo: [ :c |
@@ -90,4 +103,10 @@ BgGanttBarElement >> showDiamondMarker [
 		c horizontal exact: diamondSize.
 		c vertical matchParent ].
 	barRect background: (BlColorPaint color: Color darkGray)
+]
+
+{ #category : 'accessing' }
+BgGanttBarElement >> xOffset: aNumber [
+	xOffset := aNumber.
+	self positionBar
 ]
