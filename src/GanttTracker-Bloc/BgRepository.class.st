@@ -39,7 +39,7 @@ BgRepository >> customPath: aPath [
 { #category : 'accessing' }
 BgRepository >> defaultPath [
 	^customPath ifNil: [
-		FileLocator imageDirectory / 'GanttTrackerBloc' / 'items.fuel' ]
+		FileLocator imageDirectory / 'GanttTrackerBloc' / 'items.ston' ]
 ]
 
 { #category : 'initialization' }
@@ -58,7 +58,7 @@ BgRepository >> load [
 	path := self defaultPath.
 	items := path exists
 		ifTrue: [
-			[ FLMaterializer materializeFromFileNamed: path fullName ]
+			[ path readStreamDo: [ :stream | STON fromStream: stream ] ]
 				on: Error do: [ :e | OrderedCollection new ] ]
 		ifFalse: [ OrderedCollection new ]
 ]
@@ -74,7 +74,8 @@ BgRepository >> save [
 	| path |
 	path := self defaultPath.
 	path parent ensureCreateDirectory.
-	FLSerializer serialize: items toFileNamed: path fullName
+	path writeStreamDo: [ :stream |
+		STON put: items onStream: stream ]
 ]
 
 { #category : 'mutations' }
