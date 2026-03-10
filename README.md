@@ -57,6 +57,12 @@ BgMainPresenter new open.
 | Hide completed items | Toolbar **Current** toggle |
 | Filter | Filter bar at the top of the Gantt panel |
 
+### Supported Pharo Versions
+
+| Name | Smalltalk Version |
+| ------------- | ------------- |
+| Pharo | 12.0 | 
+| Pharo | 13.0 | 
 
 ## License
 
