@@ -77,7 +77,8 @@ BgGanttPresenter >> applyFilter [
 	hideDone ifTrue: [
 		filtered := filtered reject: [ :si | si item status = #done ] ].
 	listElement dataAccessor removeAll.
-	listElement dataAccessor addAllLast: filtered
+	listElement dataAccessor addAllLast: filtered.
+	arrowOverlay ifNotNil: [ arrowOverlay visibleItems: filtered ]
 ]
 
 { #category : 'private' }
@@ -379,8 +380,8 @@ BgGanttPresenter >> loadScheduleResult: aBgScheduleResult [
 	totalChartWidth := totalDays * BgGanttPresenter dayWidth.
 	headerElement buildFor: aBgScheduleResult.
 	listElement selecter deselectAll.
-	self applyFilter.
 	arrowOverlay scheduleResult: aBgScheduleResult.
+	self applyFilter.
 	self updateScrollBar
 ]
 
