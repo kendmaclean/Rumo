@@ -74,11 +74,15 @@ BgMainPresenter >> initializePresenters [
 
 { #category : 'initialization' }
 BgMainPresenter >> initializeWindow: aWindowPresenter [
+
 	| ext |
 	ext := LastBounds ifNil: [ 900 @ 600 ] ifNotNil: [ :b | b extent ].
-	aWindowPresenter title: 'GanttTracker'; initialExtent: ext.
+	aWindowPresenter
+		title: 'Rumo Gantt Tracker';
+		initialExtent: ext.
 	aWindowPresenter whenWillCloseDo: [
-		aWindowPresenter adapter ifNotNil: [ :a | LastBounds := a widget bounds ] ]
+		aWindowPresenter adapter ifNotNil: [ :a |
+			LastBounds := a widget bounds ] ]
 ]
 
 { #category : 'actions' }
