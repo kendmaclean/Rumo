@@ -17,12 +17,11 @@ Rumo schedules your tasks automatically — you define estimates, priorities, an
 
 ## Requirements
 
-- [Pharo 12](https://pharo.org/download)
 - Bloc / Toplo (included via Metacello)
 
 ## Installation
 
-Open a Pharo 12 image, and add Bloc/Toplo to your image:
+Open a Pharo image and add Bloc/Toplo:
 
 ```
 Library > Load Bloc and Toplo
