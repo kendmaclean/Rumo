@@ -17,6 +17,13 @@ BgScheduleResultTest >> testAccessors [
 ]
 
 { #category : 'tests' }
+BgScheduleResultTest >> testAnchorDateSetAfterSchedule [
+	| result |
+	result := BgScheduler new scheduleAll: OrderedCollection new.
+	self assert: result anchorDate equals: Date today
+]
+
+{ #category : 'tests' }
 BgScheduleResultTest >> testComputedAtTimestamp [
 	| result before after |
 	result := BgScheduleResult new.

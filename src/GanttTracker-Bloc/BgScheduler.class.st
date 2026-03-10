@@ -58,6 +58,7 @@ BgScheduler >> scheduleAll: aCollection [
 	scheduledItems addAll: (done collect: [ :item |
 		BgScheduledItem new item: item; startDay: 0; endDay: 0; yourself ]).
 	result scheduledItems: scheduledItems.
+	result anchorDate: Date today.
 	result computedAt: DateAndTime now.
 	^result
 ]

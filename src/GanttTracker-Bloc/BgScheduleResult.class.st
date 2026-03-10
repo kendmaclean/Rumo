@@ -3,11 +3,22 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'scheduledItems',
-		'computedAt'
+		'computedAt',
+		'anchorDate'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
 }
+
+{ #category : 'accessing' }
+BgScheduleResult >> anchorDate [
+	^anchorDate
+]
+
+{ #category : 'accessing' }
+BgScheduleResult >> anchorDate: aDate [
+	anchorDate := aDate
+]
 
 { #category : 'accessing' }
 BgScheduleResult >> computedAt [
