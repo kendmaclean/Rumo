@@ -17,14 +17,14 @@ BaselineOfRumo >> baseline: spec [
 			with: [ spec repository: 'github://pharo-graphics/Toplo:master/src' ].
 
 		spec
-			package: 'GanttTracker-Bloc'
+			package: 'Rumo'
 			with: [ spec requires: #('Bloc' 'Toplo') ].
 		spec
-			package: 'GanttTracker-Bloc-Tests'
-			with: [ spec requires: #('GanttTracker-Bloc') ].
+			package: 'Rumo-Tests'
+			with: [ spec requires: #('Rumo') ].
 
 		spec
-			group: 'Core' with: #('GanttTracker-Bloc');
-			group: 'Tests' with: #('GanttTracker-Bloc-Tests');
+			group: 'Core' with: #('Rumo');
+			group: 'Tests' with: #('Rumo-Tests');
 			group: 'default' with: #('Core' 'Tests') ]
 ]
