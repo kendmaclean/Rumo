@@ -42,7 +42,7 @@ click DoIt.
 ## Running
 
 ```smalltalk
-BgMainPresenter new openWithSpec.
+BgMainPresenter new open.
 ```
 
 ## Usage
