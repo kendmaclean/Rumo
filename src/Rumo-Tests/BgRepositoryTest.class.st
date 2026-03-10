@@ -39,6 +39,30 @@ BgRepositoryTest >> testCanUndo [
 ]
 
 { #category : 'tests' }
+BgRepositoryTest >> testJsonRoundTrip [
+	| repo item1 item2 path repo2 loaded |
+	repo := BgRepository uniqueInstance.
+	item1 := BgItem new title: 'Alpha'; type: #task; priority: #high; yourself.
+	item2 := BgItem new title: 'Beta'; type: #bug; yourself.
+	item2 pvtDependencies: (OrderedCollection with: item1).
+	repo addItem: item1.
+	repo addItem: item2.
+
+	path := repo defaultPath.
+	repo2 := BgRepository new.
+	repo2 customPath: path.
+	repo2 load.
+	loaded := repo2 items.
+
+	self assert: loaded size equals: 2.
+	self assert: loaded first title equals: 'Alpha'.
+	self assert: loaded first priority equals: #high.
+	self assert: loaded last type equals: #bug.
+	self assert: loaded last dependencies size equals: 1.
+	self assert: loaded last dependencies first id equals: item1 id
+]
+
+{ #category : 'tests' }
 BgRepositoryTest >> testRemoveItem [
 	| repo item |
 	repo := BgRepository uniqueInstance.

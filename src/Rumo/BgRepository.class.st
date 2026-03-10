@@ -45,8 +45,8 @@ BgRepository >> customPath: aPath [
 
 { #category : 'accessing' }
 BgRepository >> defaultPath [
-	^customPath ifNil: [
-		FileLocator imageDirectory / 'GanttTrackerBloc' / 'items.ston' ]
+	^ customPath ifNil: [
+		FileLocator imageDirectory / 'Rumo' / 'items.json' ]
 ]
 
 { #category : 'initialization' }
@@ -62,12 +62,23 @@ BgRepository >> items [
 
 { #category : 'persistence' }
 BgRepository >> load [
-	| path |
+	| path raw allItems idMap |
 	path := self defaultPath.
 	items := path exists
 		ifTrue: [
-			[ path readStreamDo: [ :stream | STON fromStream: stream ] ]
-				on: Error do: [ :e | OrderedCollection new ] ]
+			[
+				raw := NeoJSONReader fromString: path contents.
+				raw isArray ifFalse: [ ^ items := OrderedCollection new ].
+				allItems := (raw collect: [ :d | BgItem fromDictionary: d ]) asOrderedCollection.
+				idMap := Dictionary new.
+				allItems do: [ :item | idMap at: item id put: item ].
+				allItems do: [ :item |
+					item pvtDependencies: ((item dependencies
+						collect: [ :depId | idMap at: depId ifAbsent: [ nil ] ])
+						reject: [ :dep | dep isNil ]) asOrderedCollection ].
+				allItems
+			] on: Error do: [ :e | OrderedCollection new ]
+		]
 		ifFalse: [ OrderedCollection new ]
 ]
 
@@ -86,11 +97,11 @@ BgRepository >> removeItem: aBgItem [
 
 { #category : 'persistence' }
 BgRepository >> save [
-	| path |
+	| path json |
 	path := self defaultPath.
 	path parent ensureCreateDirectory.
-	path writeStreamDo: [ :stream |
-		STON put: items onStream: stream ]
+	json := NeoJSONWriter toString: (items collect: [ :each | each asDictionary ]).
+	path writeStreamDo: [ :stream | stream nextPutAll: json ]
 ]
 
 { #category : 'mutations' }
