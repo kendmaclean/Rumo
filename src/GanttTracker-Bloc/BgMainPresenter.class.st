@@ -99,18 +99,9 @@ BgMainPresenter >> refresh [
 
 { #category : 'actions' }
 BgMainPresenter >> removeDependency [
-	| deps chosen |
 	selectedItem ifNil: [ ^self ].
-	deps := selectedItem dependencies.
-	chosen := UIManager default
-		chooseFrom: (deps collect: [ :d | d title ifNil: [ 'untitled' ] ])
-		values: (1 to: deps size) asArray
-		lines: #()
-		title: 'Remove which dependency?'.
-	chosen ifNotNil: [ :idx |
-		selectedItem removeDependency: (deps at: idx).
-		BgRepository uniqueInstance updateItem: selectedItem.
-		self refresh ]
+	selectedItem dependencies isEmpty ifTrue: [ ^self ].
+	ganttPresenter enterDependencyRemovalModeFor: selectedItem
 ]
 
 { #category : 'actions' }
@@ -148,6 +139,11 @@ BgMainPresenter >> wireCallbacks [
 	ganttPresenter onDependencySelected: [ :dep |
 		selectedItem ifNotNil: [ :src |
 			src dependencies add: dep.
+			BgRepository uniqueInstance updateItem: src.
+			self refresh ] ].
+	ganttPresenter onDependencyRemovalConfirmed: [ :removedDeps |
+		selectedItem ifNotNil: [ :src |
+			removedDeps do: [ :dep | src removeDependency: dep ].
 			BgRepository uniqueInstance updateItem: src.
 			self refresh ] ].
 	detailsPresenter onSave: [ self refresh ]

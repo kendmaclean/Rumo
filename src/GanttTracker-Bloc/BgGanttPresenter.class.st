@@ -17,12 +17,15 @@ Class {
 		'filterMode',
 		'filterRow',
 		'hideDone',
-		'inSelectionMode',
 		'selectionSourceItem',
 		'eligibleItems',
 		'onDependencySelected',
 		'selectionBanner',
-		'bannerLabel'
+		'bannerLabel',
+		'selectionMode',
+		'pendingRemovals',
+		'confirmBtn',
+		'onDependencyRemovalConfirmed'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -187,17 +190,18 @@ BgGanttPresenter >> buildList [
 		estimateText := item estimate
 			ifNil: [ '?' ]
 			ifNotNil: [ :e | e printString , 'd' ].
-
-		state := inSelectionMode
-			ifTrue: [
+		state := selectionMode
+			ifNil: [ #normal ]
+			ifNotNil: [
 				item == selectionSourceItem
 					ifTrue: [ #source ]
 					ifFalse: [
 						(eligibleItems includes: item)
-							ifTrue: [ #eligible ]
-							ifFalse: [ #ineligible ] ] ]
-			ifFalse: [ #normal ].
-
+							ifTrue: [
+								(selectionMode = #remove and: [ pendingRemovals includes: item ])
+									ifTrue: [ #pendingRemoval ]
+									ifFalse: [ #eligible ] ]
+							ifFalse: [ #ineligible ] ] ].
 		labelEl := BlTextElement new.
 		labelEl text: (idx printString , ' ' , icon , ' ' , titleText
 			, ' (' , estimateText , ')') asRopedText.
@@ -210,13 +214,11 @@ BgGanttPresenter >> buildList [
 			ifFalse: [
 				item status = #blocked
 					ifTrue: [ labelEl text foreground: Color gray ] ].
-
 		sepEl := BlElement new.
 		sepEl background: (BlColorPaint color: (Color gray alpha: 0.35)).
 		sepEl constraintsDo: [ :c |
 			c horizontal exact: 1.
 			c vertical exact: BgGanttPresenter rowHeight ].
-
 		barEl := BgGanttBarElement new.
 		barEl setXOffset: xOffset.
 		barEl scheduledItem: si.
@@ -227,11 +229,15 @@ BgGanttPresenter >> buildList [
 				barEl onContextMenu: onContextMenu ]
 			ifFalse: [
 				barEl onContextMenu: nil.
-				state = #eligible ifTrue: [
-					barEl onSelectionChanged: [ :dep |
-						onDependencySelected ifNotNil: [ :cb | cb value: dep ].
-						self exitDependencySelectionMode ] ] ].
-
+				(#(#eligible #pendingRemoval) includes: state) ifTrue: [
+					selectionMode = #add
+						ifTrue: [
+							barEl onSelectionChanged: [ :dep |
+								onDependencySelected ifNotNil: [ :cb | cb value: dep ].
+								self exitDependencySelectionMode ] ]
+						ifFalse: [
+							barEl onSelectionChanged: [ :dep |
+								self togglePendingRemoval: dep ] ] ] ].
 		barEl constraintsDo: [ :c |
 			c horizontal matchParent.
 			c vertical exact: BgGanttPresenter rowHeight ].
@@ -240,10 +246,9 @@ BgGanttPresenter >> buildList [
 		node addChild: labelEl.
 		node addChild: sepEl.
 		node addChild: barEl ].
-
 	listElement addEventHandlerOn: ToListPrimarySelectionChangedEvent
 		do: [ :evt |
-			inSelectionMode ifFalse: [
+			selectionMode ifNil: [
 				| idxs |
 				idxs := listElement selecter selectedIndexes.
 				(idxs notEmpty and: [ idxs anyOne <= listElement dataAccessor size ]) ifTrue: [
@@ -266,7 +271,7 @@ BgGanttPresenter >> buildScrollBar [
 
 { #category : 'private - building' }
 BgGanttPresenter >> buildSelectionBanner [
-	| closeBtn closeLbl |
+	| closeBtn closeLbl confirmLbl |
 	selectionBanner := BlElement new.
 	selectionBanner layout: BlLinearLayout horizontal.
 	selectionBanner background: (BlColorPaint color: (Color yellow alpha: 0.25)).
@@ -283,12 +288,26 @@ BgGanttPresenter >> buildSelectionBanner [
 		c linear weight: 1 ].
 	bannerLabel margin: (BlInsets left: 8).
 
+	confirmLbl := BlTextElement new.
+	confirmLbl text: 'Done' asRopedText.
+	confirmLbl constraintsDo: [ :c |
+		c frame horizontal alignCenter.
+		c frame vertical alignCenter ].
+	confirmBtn := BlElement new.
+	confirmBtn layout: BlFrameLayout new.
+	confirmBtn background: (BlColorPaint color: (Color green alpha: 0.35)).
+	confirmBtn constraintsDo: [ :c |
+		c horizontal exact: 60.
+		c vertical matchParent ].
+	confirmBtn addChild: confirmLbl.
+	confirmBtn addEventHandlerOn: BlClickEvent do: [ self confirmDependencyRemoval ].
+	confirmBtn visibility: BlVisibility gone.
+
 	closeLbl := BlTextElement new.
 	closeLbl text: 'Cancel' asRopedText.
 	closeLbl constraintsDo: [ :c |
 		c frame horizontal alignCenter.
 		c frame vertical alignCenter ].
-
 	closeBtn := BlElement new.
 	closeBtn layout: BlFrameLayout new.
 	closeBtn background: (BlColorPaint color: (Color gray alpha: 0.2)).
@@ -299,7 +318,16 @@ BgGanttPresenter >> buildSelectionBanner [
 	closeBtn addEventHandlerOn: BlClickEvent do: [ self exitDependencySelectionMode ].
 
 	selectionBanner addChild: bannerLabel.
+	selectionBanner addChild: confirmBtn.
 	selectionBanner addChild: closeBtn
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> confirmDependencyRemoval [
+	| snapshot |
+	snapshot := pendingRemovals copy.
+	self exitDependencySelectionMode.
+	onDependencyRemovalConfirmed ifNotNil: [ :cb | cb value: snapshot ]
 ]
 
 { #category : 'accessing' }
@@ -308,9 +336,24 @@ BgGanttPresenter >> eligibleItems [
 ]
 
 { #category : 'api' }
+BgGanttPresenter >> enterDependencyRemovalModeFor: aBgItem [
+	selectionMode := #remove.
+	selectionSourceItem := aBgItem.
+	eligibleItems := aBgItem dependencies asIdentitySet.
+	pendingRemovals := IdentitySet new.
+	selectionBanner ifNotNil: [
+		confirmBtn ifNotNil: [ confirmBtn visibility: BlVisibility visible ].
+		bannerLabel text: ('Remove dependencies from: "' ,
+			(aBgItem title ifNil: [ 'untitled' ]) ,
+			'" — click to toggle, then Done') asRopedText.
+		selectionBanner visibility: BlVisibility visible ].
+	self applyFilter
+]
+
+{ #category : 'api' }
 BgGanttPresenter >> enterDependencySelectionModeFor: aBgItem [
 	| validator |
-	inSelectionMode := true.
+	selectionMode := #add.
 	selectionSourceItem := aBgItem.
 	validator := BgDependencyValidator new.
 	eligibleItems := (BgRepository uniqueInstance items
@@ -318,6 +361,7 @@ BgGanttPresenter >> enterDependencySelectionModeFor: aBgItem [
 			item status ~= #done and: [ validator canAdd: item to: aBgItem ] ])
 		asIdentitySet.
 	selectionBanner ifNotNil: [
+		confirmBtn ifNotNil: [ confirmBtn visibility: BlVisibility gone ].
 		bannerLabel text: ('Selecting dependency for: "' ,
 			(aBgItem title ifNil: [ 'untitled' ]) ,
 			'" — click a task or press Escape') asRopedText.
@@ -327,10 +371,13 @@ BgGanttPresenter >> enterDependencySelectionModeFor: aBgItem [
 
 { #category : 'api' }
 BgGanttPresenter >> exitDependencySelectionMode [
-	inSelectionMode := false.
+	selectionMode := nil.
 	selectionSourceItem := nil.
 	eligibleItems := IdentitySet new.
-	selectionBanner ifNotNil: [ selectionBanner visibility: BlVisibility gone ].
+	pendingRemovals := IdentitySet new.
+	selectionBanner ifNotNil: [
+		confirmBtn ifNotNil: [ confirmBtn visibility: BlVisibility gone ].
+		selectionBanner visibility: BlVisibility gone ].
 	self applyFilter
 ]
 
@@ -350,9 +397,10 @@ BgGanttPresenter >> initializePresenters [
 	xOffset := 0.
 	totalChartWidth := 0.
 	hideDone := false.
-	inSelectionMode := false.
+	selectionMode := nil.
 	selectionSourceItem := nil.
 	eligibleItems := IdentitySet new.
+	pendingRemovals := IdentitySet new.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
@@ -366,7 +414,7 @@ BgGanttPresenter >> initializePresenters [
 
 { #category : 'accessing' }
 BgGanttPresenter >> isInSelectionMode [
-	^inSelectionMode
+	^selectionMode notNil
 ]
 
 { #category : 'api' }
@@ -391,6 +439,11 @@ BgGanttPresenter >> onContextMenu: aBlock [
 ]
 
 { #category : 'accessing' }
+BgGanttPresenter >> onDependencyRemovalConfirmed: aBlock [
+	onDependencyRemovalConfirmed := aBlock
+]
+
+{ #category : 'accessing' }
 BgGanttPresenter >> onDependencySelected: aBlock [
 	onDependencySelected := aBlock
 ]
@@ -401,6 +454,11 @@ BgGanttPresenter >> onSelectionChanged: aBlock [
 ]
 
 { #category : 'accessing' }
+BgGanttPresenter >> pendingRemovals [
+	^pendingRemovals
+]
+
+{ #category : 'accessing' }
 BgGanttPresenter >> selectionSourceItem [
 	^ selectionSourceItem
 ]
@@ -408,6 +466,14 @@ BgGanttPresenter >> selectionSourceItem [
 { #category : 'api' }
 BgGanttPresenter >> toggleHideDone [
 	hideDone := hideDone not.
+	self applyFilter
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> togglePendingRemoval: aBgItem [
+	(pendingRemovals includes: aBgItem)
+		ifTrue: [ pendingRemovals remove: aBgItem ]
+		ifFalse: [ pendingRemovals add: aBgItem ].
 	self applyFilter
 ]
 

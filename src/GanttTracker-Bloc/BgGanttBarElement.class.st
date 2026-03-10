@@ -28,7 +28,16 @@ BgGanttBarElement >> applySelectionVisuals [
 			c vertical exact: 22 ].
 		self addChild: dimOverlay ].
 	selectionState = #source ifTrue: [
-		barRect border: (BlBorder paint: (Color blue alpha: 0.8) width: 2) ]
+		barRect border: (BlBorder paint: (Color blue alpha: 0.8) width: 2) ].
+	selectionState = #pendingRemoval ifTrue: [
+		dimOverlay := BlElement new.
+		dimOverlay background: (BlColorPaint color: (Color red alpha: 0.4)).
+		dimOverlay constraintsDo: [ :c |
+			c frame horizontal alignLeft.
+			c frame vertical alignCenter.
+			c horizontal matchParent.
+			c vertical exact: 22 ].
+		self addChild: dimOverlay ]
 ]
 
 { #category : 'private' }
