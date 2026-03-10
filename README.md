@@ -15,6 +15,8 @@ Rumo schedules your tasks automatically — you define estimates, priorities, an
 - **Undo** — 5-level deep-copy undo stack
 - **Persistence** — auto-saves to STON on every change
 
+![Alt text for the image](rumo_screenshot.png)
+
 ## Requirements
 
 - Bloc / Toplo (included via Metacello)
