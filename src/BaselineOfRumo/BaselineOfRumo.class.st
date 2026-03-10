@@ -7,24 +7,22 @@ Class {
 
 { #category : 'baselines' }
 BaselineOfRumo >> baseline: spec [
+
 	<baseline>
 	spec for: #common do: [
 		spec
 			baseline: 'Bloc'
-			with: [ spec repository: 'github://pharo-graphics/Bloc:v2.1.0/src' ].
+			with: [ spec repository: 'github://pharo-graphics/Bloc:master/src' ].
 		spec
 			baseline: 'Toplo'
-			with: [ spec repository: 'github://pharo-graphics/Toplo:master/src' ].
+			with: [
+			spec repository: 'github://pharo-graphics/Toplo:master/src' ].
+
+		spec package: 'Rumo' with: [ spec requires: #( 'Bloc' 'Toplo' ) ].
+		spec package: 'Rumo-Tests' with: [ spec requires: #( 'Rumo' ) ].
 
 		spec
-			package: 'Rumo'
-			with: [ spec requires: #('Bloc' 'Toplo') ].
-		spec
-			package: 'Rumo-Tests'
-			with: [ spec requires: #('Rumo') ].
-
-		spec
-			group: 'Core' with: #('Rumo');
-			group: 'Tests' with: #('Rumo-Tests');
-			group: 'default' with: #('Core' 'Tests') ]
+			group: 'Core' with: #( 'Rumo' );
+			group: 'Tests' with: #( 'Rumo-Tests' );
+			group: 'default' with: #( 'Core' 'Tests' ) ]
 ]
