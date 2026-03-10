@@ -25,7 +25,9 @@ Class {
 		'selectionMode',
 		'pendingRemovals',
 		'confirmBtn',
-		'onDependencyRemovalConfirmed'
+		'onDependencyRemovalConfirmed',
+		'pendingAdds',
+		'onDependencyManageConfirmed'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -196,12 +198,27 @@ BgGanttPresenter >> buildList [
 				item == selectionSourceItem
 					ifTrue: [ #source ]
 					ifFalse: [
-						(eligibleItems includes: item)
+						selectionMode = #manage
 							ifTrue: [
-								(selectionMode = #remove and: [ pendingRemovals includes: item ])
-									ifTrue: [ #pendingRemoval ]
-									ifFalse: [ #eligible ] ]
-							ifFalse: [ #ineligible ] ] ].
+								(selectionSourceItem dependencies includes: item)
+									ifTrue: [
+										(pendingRemovals includes: item)
+											ifTrue: [ #pendingRemoval ]
+											ifFalse: [ #currentDep ] ]
+									ifFalse: [
+										(eligibleItems includes: item)
+											ifTrue: [
+												(pendingAdds includes: item)
+													ifTrue: [ #pendingAdd ]
+													ifFalse: [ #eligible ] ]
+											ifFalse: [ #ineligible ] ] ]
+							ifFalse: [
+								(eligibleItems includes: item)
+									ifTrue: [
+										(selectionMode = #remove and: [ pendingRemovals includes: item ])
+											ifTrue: [ #pendingRemoval ]
+											ifFalse: [ #eligible ] ]
+									ifFalse: [ #ineligible ] ] ] ].
 		labelEl := BlTextElement new.
 		labelEl text: (idx printString , ' ' , icon , ' ' , titleText
 			, ' (' , estimateText , ')') asRopedText.
@@ -229,15 +246,20 @@ BgGanttPresenter >> buildList [
 				barEl onContextMenu: onContextMenu ]
 			ifFalse: [
 				barEl onContextMenu: nil.
-				(#(#eligible #pendingRemoval) includes: state) ifTrue: [
-					selectionMode = #add
-						ifTrue: [
-							barEl onSelectionChanged: [ :dep |
-								onDependencySelected ifNotNil: [ :cb | cb value: dep ].
-								self exitDependencySelectionMode ] ]
-						ifFalse: [
-							barEl onSelectionChanged: [ :dep |
-								self togglePendingRemoval: dep ] ] ] ].
+				selectionMode = #manage
+					ifTrue: [
+						(#(#currentDep #pendingRemoval #eligible #pendingAdd) includes: state) ifTrue: [
+							barEl onSelectionChanged: [ :dep | self toggleManageItem: dep ] ] ]
+					ifFalse: [
+						(#(#eligible #pendingRemoval) includes: state) ifTrue: [
+							selectionMode = #add
+								ifTrue: [
+									barEl onSelectionChanged: [ :dep |
+										onDependencySelected ifNotNil: [ :cb | cb value: dep ].
+										self exitDependencySelectionMode ] ]
+								ifFalse: [
+									barEl onSelectionChanged: [ :dep |
+										self togglePendingRemoval: dep ] ] ] ] ].
 		barEl constraintsDo: [ :c |
 			c horizontal matchParent.
 			c vertical exact: BgGanttPresenter rowHeight ].
@@ -300,7 +322,10 @@ BgGanttPresenter >> buildSelectionBanner [
 		c horizontal exact: 60.
 		c vertical matchParent ].
 	confirmBtn addChild: confirmLbl.
-	confirmBtn addEventHandlerOn: BlClickEvent do: [ self confirmDependencyRemoval ].
+	confirmBtn addEventHandlerOn: BlClickEvent do: [
+		selectionMode = #manage
+			ifTrue: [ self confirmDependencyManage ]
+			ifFalse: [ self confirmDependencyRemoval ] ].
 	confirmBtn visibility: BlVisibility gone.
 
 	closeLbl := BlTextElement new.
@@ -323,6 +348,15 @@ BgGanttPresenter >> buildSelectionBanner [
 ]
 
 { #category : 'api' }
+BgGanttPresenter >> confirmDependencyManage [
+	| adds removals |
+	adds := pendingAdds copy.
+	removals := pendingRemovals copy.
+	self exitDependencySelectionMode.
+	onDependencyManageConfirmed ifNotNil: [ :cb | cb value: adds value: removals ]
+]
+
+{ #category : 'api' }
 BgGanttPresenter >> confirmDependencyRemoval [
 	| snapshot |
 	snapshot := pendingRemovals copy.
@@ -333,6 +367,27 @@ BgGanttPresenter >> confirmDependencyRemoval [
 { #category : 'accessing' }
 BgGanttPresenter >> eligibleItems [
 	^ eligibleItems
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> enterDependencyManageModeFor: aBgItem [
+	| validator |
+	selectionMode := #manage.
+	selectionSourceItem := aBgItem.
+	validator := BgDependencyValidator new.
+	eligibleItems := (BgRepository uniqueInstance items
+		select: [ :item |
+			item status ~= #done and: [ validator canAdd: item to: aBgItem ] ])
+		asIdentitySet.
+	pendingRemovals := IdentitySet new.
+	pendingAdds := IdentitySet new.
+	selectionBanner ifNotNil: [
+		confirmBtn ifNotNil: [ confirmBtn visibility: BlVisibility visible ].
+		bannerLabel text: ('Managing dependencies for: "' ,
+			(aBgItem title ifNil: [ 'untitled' ]) ,
+			'" — Done to confirm, Escape to cancel') asRopedText.
+		selectionBanner visibility: BlVisibility visible ].
+	self applyFilter
 ]
 
 { #category : 'api' }
@@ -375,6 +430,7 @@ BgGanttPresenter >> exitDependencySelectionMode [
 	selectionSourceItem := nil.
 	eligibleItems := IdentitySet new.
 	pendingRemovals := IdentitySet new.
+	pendingAdds := IdentitySet new.
 	selectionBanner ifNotNil: [
 		confirmBtn ifNotNil: [ confirmBtn visibility: BlVisibility gone ].
 		selectionBanner visibility: BlVisibility gone ].
@@ -401,6 +457,7 @@ BgGanttPresenter >> initializePresenters [
 	selectionSourceItem := nil.
 	eligibleItems := IdentitySet new.
 	pendingRemovals := IdentitySet new.
+	pendingAdds := IdentitySet new.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
@@ -439,6 +496,11 @@ BgGanttPresenter >> onContextMenu: aBlock [
 ]
 
 { #category : 'accessing' }
+BgGanttPresenter >> onDependencyManageConfirmed: aBlock [
+	onDependencyManageConfirmed := aBlock
+]
+
+{ #category : 'accessing' }
 BgGanttPresenter >> onDependencyRemovalConfirmed: aBlock [
 	onDependencyRemovalConfirmed := aBlock
 ]
@@ -454,6 +516,11 @@ BgGanttPresenter >> onSelectionChanged: aBlock [
 ]
 
 { #category : 'accessing' }
+BgGanttPresenter >> pendingAdds [
+	^pendingAdds
+]
+
+{ #category : 'accessing' }
 BgGanttPresenter >> pendingRemovals [
 	^pendingRemovals
 ]
@@ -466,6 +533,20 @@ BgGanttPresenter >> selectionSourceItem [
 { #category : 'api' }
 BgGanttPresenter >> toggleHideDone [
 	hideDone := hideDone not.
+	self applyFilter
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> toggleManageItem: aBgItem [
+	(selectionSourceItem dependencies includes: aBgItem)
+		ifTrue: [
+			(pendingRemovals includes: aBgItem)
+				ifTrue: [ pendingRemovals remove: aBgItem ]
+				ifFalse: [ pendingRemovals add: aBgItem ] ]
+		ifFalse: [
+			(pendingAdds includes: aBgItem)
+				ifTrue: [ pendingAdds remove: aBgItem ]
+				ifFalse: [ pendingAdds add: aBgItem ] ].
 	self applyFilter
 ]
 

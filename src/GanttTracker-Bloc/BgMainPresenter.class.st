@@ -21,8 +21,7 @@ BgMainPresenter class >> open [
 
 { #category : 'actions' }
 BgMainPresenter >> addDependency [
-	selectedItem ifNil: [ ^self ].
-	ganttPresenter enterDependencySelectionModeFor: selectedItem
+	self manageDependencies
 ]
 
 { #category : 'actions' }
@@ -83,6 +82,12 @@ BgMainPresenter >> initializeWindow: aWindowPresenter [
 ]
 
 { #category : 'actions' }
+BgMainPresenter >> manageDependencies [
+	selectedItem ifNil: [ ^self ].
+	ganttPresenter enterDependencyManageModeFor: selectedItem
+]
+
+{ #category : 'actions' }
 BgMainPresenter >> onItemSelected: aBgItem [
 	selectedItem := aBgItem.
 	detailsPresenter loadItem: aBgItem.
@@ -99,9 +104,7 @@ BgMainPresenter >> refresh [
 
 { #category : 'actions' }
 BgMainPresenter >> removeDependency [
-	selectedItem ifNil: [ ^self ].
-	selectedItem dependencies isEmpty ifTrue: [ ^self ].
-	ganttPresenter enterDependencyRemovalModeFor: selectedItem
+	self manageDependencies
 ]
 
 { #category : 'actions' }
@@ -112,10 +115,7 @@ BgMainPresenter >> showContextMenuFor: aBgItem [
 	choices := OrderedCollection new.
 	actions := OrderedCollection new.
 	choices add: 'Delete'. actions add: [ self deleteSelectedItem ].
-	choices add: 'Add Dependency'. actions add: [ self addDependency ].
-	aBgItem dependencies isEmpty ifFalse: [
-		choices add: 'Remove Dependency...'.
-		actions add: [ self removeDependency ] ].
+	choices add: 'Manage Dependencies'. actions add: [ self manageDependencies ].
 	chosen := UIManager default
 		chooseFrom: choices
 		values: (1 to: choices size) asArray
@@ -144,6 +144,12 @@ BgMainPresenter >> wireCallbacks [
 	ganttPresenter onDependencyRemovalConfirmed: [ :removedDeps |
 		selectedItem ifNotNil: [ :src |
 			removedDeps do: [ :dep | src removeDependency: dep ].
+			BgRepository uniqueInstance updateItem: src.
+			self refresh ] ].
+	ganttPresenter onDependencyManageConfirmed: [ :adds :removals |
+		selectedItem ifNotNil: [ :src |
+			adds do: [ :dep | src dependencies add: dep ].
+			removals do: [ :dep | src removeDependency: dep ].
 			BgRepository uniqueInstance updateItem: src.
 			self refresh ] ].
 	detailsPresenter onSave: [ self refresh ]
