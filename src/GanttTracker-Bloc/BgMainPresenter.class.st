@@ -22,12 +22,7 @@ BgMainPresenter class >> open [
 { #category : 'actions' }
 BgMainPresenter >> addDependency [
 	selectedItem ifNil: [ ^self ].
-	BgAddDependencyDialog new
-		openOn: selectedItem
-		onConfirm: [ :dep |
-			selectedItem dependencies add: dep.
-			BgRepository uniqueInstance updateItem: selectedItem.
-			self refresh ]
+	ganttPresenter enterDependencySelectionModeFor: selectedItem
 ]
 
 { #category : 'actions' }
@@ -54,6 +49,7 @@ BgMainPresenter >> defaultLayout [
 
 { #category : 'actions' }
 BgMainPresenter >> deleteSelectedItem [
+	ganttPresenter exitDependencySelectionMode.
 	selectedItem ifNil: [ ^self ].
 	BgRepository uniqueInstance removeItem: selectedItem.
 	selectedItem := nil.
@@ -70,6 +66,10 @@ BgMainPresenter >> initializePresenters [
 	self wireCallbacks.
 	self bindKeyCombination: KeyboardKey delete asKeyCombination
 		toAction: [ self deleteSelectedItem ].
+	self bindKeyCombination: KeyboardKey escape asKeyCombination
+		toAction: [
+			ganttPresenter isInSelectionMode
+				ifTrue: [ ganttPresenter exitDependencySelectionMode ] ].
 	self refresh
 ]
 
@@ -116,6 +116,7 @@ BgMainPresenter >> removeDependency [
 { #category : 'actions' }
 BgMainPresenter >> showContextMenuFor: aBgItem [
 	| choices actions chosen |
+	ganttPresenter isInSelectionMode ifTrue: [ ^self ].
 	self onItemSelected: aBgItem.
 	choices := OrderedCollection new.
 	actions := OrderedCollection new.
@@ -144,5 +145,10 @@ BgMainPresenter >> wireCallbacks [
 		self refresh ].
 	ganttPresenter onSelectionChanged: [ :item | self onItemSelected: item ].
 	ganttPresenter onContextMenu: [ :item | self showContextMenuFor: item ].
+	ganttPresenter onDependencySelected: [ :dep |
+		selectedItem ifNotNil: [ :src |
+			src dependencies add: dep.
+			BgRepository uniqueInstance updateItem: src.
+			self refresh ] ].
 	detailsPresenter onSave: [ self refresh ]
 ]

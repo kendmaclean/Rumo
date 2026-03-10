@@ -17,7 +17,12 @@ Class {
 		'filterMode',
 		'filterRow',
 		'hideDone',
-		'inSelectionMode'
+		'inSelectionMode',
+		'selectionSourceItem',
+		'eligibleItems',
+		'onDependencySelected',
+		'selectionBanner',
+		'bannerLabel'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -46,6 +51,8 @@ BgGanttPresenter class >> rowHeight [
 { #category : 'private' }
 BgGanttPresenter >> applyFilter [
 	| pattern filtered |
+	listElement ifNil: [ ^self ].
+	allScheduledItems ifNil: [ ^self ].
 	pattern := filterField text asString trimBoth asLowercase.
 	filtered := pattern isEmpty
 		ifTrue: [ allScheduledItems ]
@@ -100,6 +107,7 @@ BgGanttPresenter >> assembleRoot [
 		c vertical matchParent ].
 	space root addChild: filterRow.
 	space root addChild: headerElement.
+	space root addChild: selectionBanner.
 	space root addChild: contentArea.
 	space root addChild: scrollBar.
 	scrollBar addEventHandlerOn: BlElementLayoutComputedEvent
@@ -169,7 +177,7 @@ BgGanttPresenter >> buildList [
 	listElement := ToListElement new.
 	listElement matchParent.
 	listElement nodeBuilder: [ :node :si :holder |
-		| item icon titleText estimateText idx labelEl sepEl barEl |
+		| item icon titleText estimateText idx labelEl sepEl barEl state |
 		item := si item.
 		idx := listElement dataAccessor indexOf: si ifAbsent: [ 0 ].
 		icon := item isTask ifTrue: [ 'T' ] ifFalse: [ 'B' ].
@@ -178,6 +186,17 @@ BgGanttPresenter >> buildList [
 		estimateText := item estimate
 			ifNil: [ '?' ]
 			ifNotNil: [ :e | e printString , 'd' ].
+
+		state := inSelectionMode
+			ifTrue: [
+				item == selectionSourceItem
+					ifTrue: [ #source ]
+					ifFalse: [
+						(eligibleItems includes: item)
+							ifTrue: [ #eligible ]
+							ifFalse: [ #ineligible ] ] ]
+			ifFalse: [ #normal ].
+
 		labelEl := BlTextElement new.
 		labelEl text: (idx printString , ' ' , icon , ' ' , titleText
 			, ' (' , estimateText , ')') asRopedText.
@@ -185,18 +204,33 @@ BgGanttPresenter >> buildList [
 			c horizontal exact: BgGanttPresenter labelWidth.
 			c vertical exact: BgGanttPresenter rowHeight.
 			c linear vertical alignCenter ].
-		item status = #blocked
-			ifTrue: [ labelEl text foreground: Color gray ].
+		state = #ineligible
+			ifTrue: [ labelEl text foreground: (Color gray alpha: 0.4) ]
+			ifFalse: [
+				item status = #blocked
+					ifTrue: [ labelEl text foreground: Color gray ] ].
+
 		sepEl := BlElement new.
 		sepEl background: (BlColorPaint color: (Color gray alpha: 0.35)).
 		sepEl constraintsDo: [ :c |
 			c horizontal exact: 1.
 			c vertical exact: BgGanttPresenter rowHeight ].
+
 		barEl := BgGanttBarElement new.
 		barEl setXOffset: xOffset.
 		barEl scheduledItem: si.
-		barEl onSelectionChanged: onSelectionChanged.
-		barEl onContextMenu: onContextMenu.
+		barEl selectionState: state.
+		state = #normal
+			ifTrue: [
+				barEl onSelectionChanged: onSelectionChanged.
+				barEl onContextMenu: onContextMenu ]
+			ifFalse: [
+				barEl onContextMenu: nil.
+				state = #eligible ifTrue: [
+					barEl onSelectionChanged: [ :dep |
+						onDependencySelected ifNotNil: [ :cb | cb value: dep ].
+						self exitDependencySelectionMode ] ] ].
+
 		barEl constraintsDo: [ :c |
 			c horizontal matchParent.
 			c vertical exact: BgGanttPresenter rowHeight ].
@@ -205,15 +239,17 @@ BgGanttPresenter >> buildList [
 		node addChild: labelEl.
 		node addChild: sepEl.
 		node addChild: barEl ].
+
 	listElement addEventHandlerOn: ToListPrimarySelectionChangedEvent
 		do: [ :evt |
-			| idxs |
-			idxs := listElement selecter selectedIndexes.
-			(idxs notEmpty and: [ idxs anyOne <= listElement dataAccessor size ]) ifTrue: [
-				| si |
-				si := listElement dataAccessor at: idxs anyOne.
-				selectedItem := si item.
-				onSelectionChanged ifNotNil: [ :cb | cb value: si item ] ] ]
+			inSelectionMode ifFalse: [
+				| idxs |
+				idxs := listElement selecter selectedIndexes.
+				(idxs notEmpty and: [ idxs anyOne <= listElement dataAccessor size ]) ifTrue: [
+					| si |
+					si := listElement dataAccessor at: idxs anyOne.
+					selectedItem := si item.
+					onSelectionChanged ifNotNil: [ :cb | cb value: si item ] ] ] ]
 ]
 
 { #category : 'private - building' }
@@ -225,6 +261,76 @@ BgGanttPresenter >> buildOverlay [
 BgGanttPresenter >> buildScrollBar [
 	scrollBar := BgHorizontalScrollBar new.
 	scrollBar onScrolled: [ :px | self applyHorizontalOffset: px ]
+]
+
+{ #category : 'private - building' }
+BgGanttPresenter >> buildSelectionBanner [
+	| closeBtn closeLbl |
+	selectionBanner := BlElement new.
+	selectionBanner layout: BlLinearLayout horizontal.
+	selectionBanner background: (BlColorPaint color: (Color yellow alpha: 0.25)).
+	selectionBanner border: (BlBorder paint: (Color orange alpha: 0.5) width: 1).
+	selectionBanner constraintsDo: [ :c |
+		c horizontal matchParent.
+		c vertical exact: 28 ].
+	selectionBanner visibility: BlVisibility gone.
+
+	bannerLabel := BlTextElement new.
+	bannerLabel constraintsDo: [ :c |
+		c linear vertical alignCenter.
+		c horizontal matchParent.
+		c linear weight: 1 ].
+	bannerLabel margin: (BlInsets left: 8).
+
+	closeLbl := BlTextElement new.
+	closeLbl text: 'Cancel' asRopedText.
+	closeLbl constraintsDo: [ :c |
+		c frame horizontal alignCenter.
+		c frame vertical alignCenter ].
+
+	closeBtn := BlElement new.
+	closeBtn layout: BlFrameLayout new.
+	closeBtn background: (BlColorPaint color: (Color gray alpha: 0.2)).
+	closeBtn constraintsDo: [ :c |
+		c horizontal exact: 60.
+		c vertical matchParent ].
+	closeBtn addChild: closeLbl.
+	closeBtn addEventHandlerOn: BlClickEvent do: [ self exitDependencySelectionMode ].
+
+	selectionBanner addChild: bannerLabel.
+	selectionBanner addChild: closeBtn
+]
+
+{ #category : 'accessing' }
+BgGanttPresenter >> eligibleItems [
+	^ eligibleItems
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> enterDependencySelectionModeFor: aBgItem [
+	| validator |
+	inSelectionMode := true.
+	selectionSourceItem := aBgItem.
+	validator := BgDependencyValidator new.
+	eligibleItems := (BgRepository uniqueInstance items
+		select: [ :item |
+			item status ~= #done and: [ validator canAdd: item to: aBgItem ] ])
+		asIdentitySet.
+	selectionBanner ifNotNil: [
+		bannerLabel text: ('Selecting dependency for: "' ,
+			(aBgItem title ifNil: [ 'untitled' ]) ,
+			'" — click a task or press Escape') asRopedText.
+		selectionBanner visibility: BlVisibility visible ].
+	self applyFilter
+]
+
+{ #category : 'api' }
+BgGanttPresenter >> exitDependencySelectionMode [
+	inSelectionMode := false.
+	selectionSourceItem := nil.
+	eligibleItems := IdentitySet new.
+	selectionBanner ifNotNil: [ selectionBanner visibility: BlVisibility gone ].
+	self applyFilter
 ]
 
 { #category : 'api' }
@@ -244,6 +350,8 @@ BgGanttPresenter >> initializePresenters [
 	totalChartWidth := 0.
 	hideDone := false.
 	inSelectionMode := false.
+	selectionSourceItem := nil.
+	eligibleItems := IdentitySet new.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
@@ -251,6 +359,7 @@ BgGanttPresenter >> initializePresenters [
 	self buildHeader.
 	self buildOverlay.
 	self buildScrollBar.
+	self buildSelectionBanner.
 	self assembleRoot
 ]
 
@@ -281,8 +390,18 @@ BgGanttPresenter >> onContextMenu: aBlock [
 ]
 
 { #category : 'accessing' }
+BgGanttPresenter >> onDependencySelected: aBlock [
+	onDependencySelected := aBlock
+]
+
+{ #category : 'accessing' }
 BgGanttPresenter >> onSelectionChanged: aBlock [
 	onSelectionChanged := aBlock
+]
+
+{ #category : 'accessing' }
+BgGanttPresenter >> selectionSourceItem [
+	^ selectionSourceItem
 ]
 
 { #category : 'api' }

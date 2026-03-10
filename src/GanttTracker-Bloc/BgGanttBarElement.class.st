@@ -6,11 +6,30 @@ Class {
 		'barRect',
 		'onSelectionChanged',
 		'onContextMenu',
-		'xOffset'
+		'xOffset',
+		'selectionState',
+		'dimOverlay'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
 }
+
+{ #category : 'private' }
+BgGanttBarElement >> applySelectionVisuals [
+	dimOverlay ifNotNil: [ dimOverlay removeFromParent. dimOverlay := nil ].
+	barRect border: BlBorder empty.
+	selectionState = #ineligible ifTrue: [
+		dimOverlay := BlElement new.
+		dimOverlay background: (BlColorPaint color: (Color white alpha: 0.65)).
+		dimOverlay constraintsDo: [ :c |
+			c frame horizontal alignLeft.
+			c frame vertical alignCenter.
+			c horizontal matchParent.
+			c vertical exact: 22 ].
+		self addChild: dimOverlay ].
+	selectionState = #source ifTrue: [
+		barRect border: (BlBorder paint: (Color blue alpha: 0.8) width: 2) ]
+]
 
 { #category : 'private' }
 BgGanttBarElement >> colorForStatus: aSymbol [
@@ -26,6 +45,7 @@ BgGanttBarElement >> colorForStatus: aSymbol [
 BgGanttBarElement >> initialize [
 	super initialize.
 	xOffset := 0.
+	selectionState := #normal.
 	self layout: BlFrameLayout new.
 	self constraintsDo: [ :c |
 		c horizontal matchParent.
@@ -39,9 +59,13 @@ BgGanttBarElement >> initialize [
 		c horizontal exact: 0 ].
 	self addChild: barRect.
 	self addEventHandlerOn: BlClickEvent
-		do: [ onSelectionChanged ifNotNil: [ :cb | cb value: scheduledItem item ] ].
+		do: [
+			(#(#ineligible #source) includes: selectionState) ifFalse: [
+				onSelectionChanged ifNotNil: [ :cb | cb value: scheduledItem item ] ] ].
 	self addEventHandlerOn: BlSecondaryClickEvent
-		do: [ onContextMenu ifNotNil: [ :cb | cb value: scheduledItem item ] ]
+		do: [
+			(#(#ineligible #source) includes: selectionState) ifFalse: [
+				onContextMenu ifNotNil: [ :cb | cb value: scheduledItem item ] ] ]
 ]
 
 { #category : 'accessing' }
@@ -86,6 +110,12 @@ BgGanttBarElement >> positionBar [
 BgGanttBarElement >> scheduledItem: aBgScheduledItem [
 	scheduledItem := aBgScheduledItem.
 	self positionBar
+]
+
+{ #category : 'accessing' }
+BgGanttBarElement >> selectionState: aSymbol [
+	selectionState := aSymbol.
+	self applySelectionVisuals
 ]
 
 { #category : 'accessing' }
