@@ -107,6 +107,7 @@ BgRepository >> undo [
 
 { #category : 'mutations' }
 BgRepository >> updateItem: aBgItem [
+	self pushUndoSnapshot.
 	aBgItem markUpdated.
 	self save
 ]

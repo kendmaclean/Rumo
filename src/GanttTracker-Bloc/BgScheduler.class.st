@@ -56,8 +56,9 @@ BgScheduler >> scheduleAll: aCollection [
 	scheduledItems addAll: (blocked collect: [ :item |
 		BgScheduledItem new item: item; startDay: 0; endDay: 0; yourself ]).
 	scheduledItems addAll: (done collect: [ :item |
-		BgScheduledItem new item: item; startDay: 0; endDay: (item estimate ifNil: [ 0 ]); yourself ]).
+		BgScheduledItem new item: item; startDay: 0; endDay: 0; yourself ]).
 	result scheduledItems: scheduledItems.
+	result computedAt: DateAndTime now.
 	^result
 ]
 

@@ -16,7 +16,8 @@ Class {
 		'totalChartWidth',
 		'filterMode',
 		'filterRow',
-		'hideDone'
+		'hideDone',
+		'inSelectionMode'
 	],
 	#category : 'GanttTracker-Bloc',
 	#package : 'GanttTracker-Bloc'
@@ -242,6 +243,7 @@ BgGanttPresenter >> initializePresenters [
 	xOffset := 0.
 	totalChartWidth := 0.
 	hideDone := false.
+	inSelectionMode := false.
 	super initializePresenters.
 	space toTheme: ToBeeTheme new.
 	self buildList.
@@ -250,6 +252,11 @@ BgGanttPresenter >> initializePresenters [
 	self buildOverlay.
 	self buildScrollBar.
 	self assembleRoot
+]
+
+{ #category : 'accessing' }
+BgGanttPresenter >> isInSelectionMode [
+	^inSelectionMode
 ]
 
 { #category : 'api' }

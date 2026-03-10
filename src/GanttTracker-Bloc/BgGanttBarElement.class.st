@@ -62,6 +62,9 @@ BgGanttBarElement >> positionBar [
 	endX := scheduledItem endDay * BgGanttPresenter dayWidth.
 	width := endX - startX.
 	item status = #blocked ifTrue: [ ^ self showDiamondMarker ].
+	item status = #done ifTrue: [
+		barRect constraintsDo: [ :c | c horizontal exact: 0 ].
+		^ self ].
 	minWidth := BgGanttPresenter dayWidth / 4.
 	width := width max: minWidth.
 	visStart := startX - xOffset.
