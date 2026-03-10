@@ -22,7 +22,13 @@ Rumo schedules your tasks automatically — you define estimates, priorities, an
 
 ## Installation
 
-Open a Pharo 12 image, open a **Playground**, and evaluate:
+Open a Pharo 12 image, and add Bloc/Toplo to your image:
+
+```
+Library > Load Bloc and Toplo
+```
+
+open a **Playground**, and enter this:
 
 ```smalltalk
 Metacello new
@@ -30,6 +36,8 @@ Metacello new
     repository: 'github://kendmaclean/Rumo:master/src';
     load.
 ```
+
+click DoIt.
 
 ## Running
 
@@ -49,18 +57,6 @@ BgMainPresenter new openWithSpec.
 | Hide completed items | Toolbar **Current** toggle |
 | Filter | Filter bar at the top of the Gantt panel |
 
-## Project Structure
-
-```
-src/
-  GanttTracker-Bloc/          Main application (presenter, scheduler, domain, persistence)
-  GanttTracker-Bloc-Tests/    Test suite (66 tests)
-  BaselineOfRumo/             Metacello baseline
-```
-
-## Development
-
-This project was built using [Claude Code](https://claude.ai/claude-code) with the [Balise MCP](https://github.com/Evref-BL/Balise) tool for live Pharo interaction.
 
 ## License
 
