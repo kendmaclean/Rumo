@@ -13,7 +13,7 @@ Rumo schedules your tasks automatically — you define estimates, priorities, an
 - **Filter bar** — filter by title, type, status, priority, or estimate
 - **Hide done** — toggle completed items out of the view
 - **Undo** — 5-level deep-copy undo stack
-- **Persistence** — auto-saves to STON on every change
+- **Persistence** — auto-saves to JSON on every change
 
 ![Alt text for the image](rumo_screenshot.png)
 
